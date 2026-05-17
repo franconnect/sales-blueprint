@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { track } from "@vercel/analytics";
 
 const LABELS = {
   maturity:    { early: "Under 50 units", growth: "50–200 units", mature: "200+ units" },
@@ -30,7 +31,6 @@ const BLUEPRINTS = {
 };
 
 const STEPS = [
-  { key: null, label: "Before we begin", title: "What's your name and email?", type: "contact" },
   { key: "maturity", label: "System size", title: "How many franchise units does your system currently have?", options: [
     { val: "early",  label: "Under 50 units",  sub: "Early stage — still finding your ICP and process" },
     { val: "growth", label: "50–200 units",    sub: "Growth stage — scaling what works" },
@@ -97,43 +97,6 @@ function ProgressBar({ current, total }) {
           transition: "background 0.3s",
         }} />
       ))}
-    </div>
-  );
-}
-
-const inputStyle = {
-  width: "100%", padding: "11px 14px", borderRadius: 8,
-  border: "1.5px solid #ddd", fontSize: 14, fontFamily: FONT,
-  background: "#fff", color: "#111", marginTop: 5, outline: "none",
-  boxSizing: "border-box",
-};
-
-function ContactStep({ answers, onChange, onNext }) {
-  const [name,  setName]  = useState(answers.name  || "");
-  const [email, setEmail] = useState(answers.email || "");
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canNext = name.trim().length > 1 && emailValid;
-  return (
-    <div>
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>Full name</label>
-        <input style={inputStyle} placeholder="Jane Smith" value={name}
-          onChange={e => { setName(e.target.value); onChange("name", e.target.value); }} />
-      </div>
-      <div style={{ marginBottom: "0.5rem" }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>Work email</label>
-        <input style={inputStyle} type="email" placeholder="jane@yourfranchise.com" value={email}
-          onChange={e => { setEmail(e.target.value); onChange("email", e.target.value); }} />
-        {email.length > 4 && !emailValid && (
-          <p style={{ fontSize: 12, color: "#c0392b", marginTop: 4, fontFamily: FONT }}>Please enter a valid email address.</p>
-        )}
-      </div>
-      <p style={{ fontSize: 12, color: "#bbb", margin: "10px 0 1.75rem", fontFamily: FONT }}>
-        Your Blueprint report will be generated instantly. Our team will also receive a copy.
-      </p>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button onClick={onNext} disabled={!canNext} style={btnStyle(!canNext)}>Next →</button>
-      </div>
     </div>
   );
 }
@@ -234,6 +197,48 @@ const backBtnStyle = {
   fontSize: 13, cursor: "pointer", fontFamily: FONT,
 };
 
+  return (
+    <div style={{ marginTop: "1rem", background: "#F3F7FA", borderRadius: 12, padding: "1.5rem", border: `1px solid #d0e4f0` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: NAVY, margin: 0, fontFamily: FONT }}>Get help from your Customer Success Manager</h3>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "0 4px" }}>×</button>
+      </div>
+      {status === "sent" ? (
+        <div style={{ textAlign: "center", padding: "1rem 0" }}>
+          <p style={{ fontSize: 15, color: "#0F6E56", fontWeight: 600, fontFamily: FONT, marginBottom: 6 }}>✓ Request sent!</p>
+          <p style={{ fontSize: 13, color: "#666", fontFamily: FONT, margin: 0 }}>Your CSM will be in touch shortly.</p>
+        </div>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: "#666", lineHeight: 1.6, marginBottom: "1rem", fontFamily: FONT }}>
+            Fill in your details and we'll connect you with your FranConnect Customer Success Manager to discuss your Blueprint recommendations.
+          </p>
+          <div style={{ marginBottom: "0.75rem" }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>Full name</label>
+            <input style={inp} placeholder="Jane Smith" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: "0.75rem" }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>Company</label>
+            <input style={inp} placeholder="Acme Franchise Group" value={company} onChange={e => setCompany(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>Work email</label>
+            <input style={inp} type="email" placeholder="jane@yourfranchise.com" value={email} onChange={e => setEmail(e.target.value)} />
+            {email.length > 4 && !emailValid && <p style={{ fontSize: 12, color: "#c0392b", marginTop: 4, fontFamily: FONT }}>Please enter a valid email address.</p>}
+          </div>
+          {status === "error" && <p style={{ fontSize: 12, color: "#c0392b", marginBottom: "0.75rem", fontFamily: FONT }}>Something went wrong — please try again.</p>}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={submit} disabled={!canSend || status === "sending"} style={btnStyle(!canSend || status === "sending")}>
+              {status === "sending" ? "Sending…" : "Send request"}
+            </button>
+            <button onClick={onClose} style={backBtnStyle}>Cancel</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [step,    setStep]    = useState(0);
   const [answers, setAnswers] = useState({});
@@ -266,6 +271,7 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Something went wrong."); return; }
       setReport(data);
+      track("blueprint_generated");
     } catch (e) {
       setError(`Error: ${e.message}`);
     } finally {
@@ -318,13 +324,10 @@ export default function App() {
           <h2 style={{ fontSize: 19, fontWeight: 600, color: "#111", marginBottom: "1.4rem", lineHeight: 1.4 }}>
             {currentStepDef.title}
           </h2>
-          {currentStepDef.type === "contact"
-            ? <ContactStep answers={answers} onChange={setAnswer} onNext={next} />
-            : <OptionStep step={currentStepDef} stepIndex={step + 1} totalSteps={totalSteps}
-                selected={answers[currentStepDef.key]}
-                onSelect={val => setAnswer(currentStepDef.key, val)}
-                onNext={next} onBack={back} />
-          }
+          <OptionStep step={currentStepDef} stepIndex={step + 1} totalSteps={totalSteps}
+            selected={answers[currentStepDef.key]}
+            onSelect={val => setAnswer(currentStepDef.key, val)}
+            onNext={next} onBack={back} />
         </>
       )}
 
@@ -372,17 +375,25 @@ export default function App() {
             Recommended improvements — pick what fits
           </p>
           {report.recommendations.map((rec, i) => <RecItem key={i} rec={rec} />)}
-          <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #ebebeb" }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-              <button onClick={() => window.print()} style={{ background: NAVY, border: "none", color: "#fff", fontWeight: 600, padding: "10px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>⬇ Download / Print</button>
-              <button onClick={restart} style={backBtnStyle}>Start over</button>
-            </div>
-            <p style={{ fontSize: 12, color: "#aaa", margin: 0, lineHeight: 1.65 }}>
-              Need help building any of this?{" "}
-              <span style={{ color: ORANGE, fontWeight: 600 }}>Contact your FranConnect Customer Success Manager</span>
-              {" "}— they can build these workflows with you.
+          {/* AI Disclaimer */}
+          <div style={{ marginTop: "1.5rem", background: "#F8F8F8", borderRadius: 10, padding: "12px 16px", border: "1px solid #E8E8E8" }}>
+            <p style={{ fontSize: 11, color: "#888", lineHeight: 1.7, margin: 0 }}>
+              <strong style={{ color: "#666" }}>About these recommendations:</strong> This report was generated by AI based on your answers. Recommendations are intended as a starting point — review each one in the context of your specific system, team, and goals before acting. Not everything will apply to every situation. Use your judgment.
             </p>
           </div>
+
+          {/* Footer actions */}
+          <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid #ebebeb" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+              <button onClick={() => window.print()} style={{ background: NAVY, border: "none", color: "#fff", fontWeight: 600, padding: "10px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>⬇ Download / Print</button>
+              <a href={`mailto:csm@franconnect.com?subject=Blueprint%20Help%20Request&body=Hi%2C%0A%0AI%20just%20ran%20through%20the%20Lead%20Funnel%20Blueprint%20tool%20and%20would%20love%20some%20help%20implementing%20the%20recommendations.%0A%0A${encodeURIComponent(report.profile_line || "")}%0A%0AMy%20name%3A%20%0AMy%20company%3A%20`}
+                style={{ background: ORANGE, border: "none", color: "#fff", fontWeight: 600, padding: "10px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: FONT, textDecoration: "none", display: "inline-block" }}>
+                Get help from your CSM
+              </a>
+              <button onClick={restart} style={backBtnStyle}>Start over</button>
+            </div>
+          </div>
+
         </div>
       )}
     </div>
